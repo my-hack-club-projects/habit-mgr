@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-import os, json
+import os, json, uuid
 
 DB_DIRECTORY = 'db'
 
@@ -39,7 +39,16 @@ class Model:
     def __init__(self, **kwargs):
         self.verify(**kwargs)
 
-        self.__dict__.update(kwargs)
+        # self.__dict__.update(kwargs)
+        for key, value in self.Meta.fields.items():
+            if key in kwargs:
+                self.__dict__.update({key: kwargs[key]})
+            elif value.verify_default():
+                self.__dict__.update({key: value.default})
+        
+        # if id doesnt exist (or empty), generate a new one
+        if 'id' not in self.__dict__:
+            self.__dict__.update({'id': str(uuid.uuid4())})
 
     def __str__(self) -> str:
         return f"<{self.__class__.__name__}> {json.dumps(self.serialize(), indent=4)}"
