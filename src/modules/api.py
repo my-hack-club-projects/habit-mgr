@@ -130,5 +130,3 @@ def reminder():
 
 def start_reminder():
     threading.Thread(target=reminder).start()
-
-start_reminder()

@@ -9,4 +9,5 @@ def home():
     return render_template('index.html')
 
 if __name__ == '__main__':
+    api.start_reminder()
     app.run(debug=True)
