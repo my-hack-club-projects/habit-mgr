@@ -109,6 +109,8 @@ def habits_complete():
         return {'success': False, 'error': str(e)}, 400
 
 def reminder():
+    from . import ntfy
+
     while True:
         habits = db.read('habits', default=[])
         for habit in habits:
@@ -117,15 +119,16 @@ def reminder():
             # habit_obj.frequency * DAY_DURATION must have passed since last reminder
             # and the current time must be within the time range
             if time.time() - habit_obj.last_reminded >= habit_obj.frequency * DAY_DURATION and habit_obj.time <= time.time() % (DAY_DURATION * habit_obj.frequency) < habit_obj.time + REMINDER_UPDATE_INTERVAL:
-                print(f'Reminder: {habit_obj.name}')
                 habit_obj.last_reminded = time.time()
                 habits = [h for h in habits if h.get('id') != habit_obj.id]
                 habits.append(habit_obj.serialize())
                 db.save('habits', habits)
 
+                ntfy.send_notification(f"Hey! It's time to {habit_obj.name}!")
+
         time.sleep(REMINDER_UPDATE_INTERVAL)
 
 def start_reminder():
-    threading.Thread(target=reminder, daemon=True).start()
+    threading.Thread(target=reminder).start()
 
 start_reminder()
