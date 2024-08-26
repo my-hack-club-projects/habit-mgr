@@ -2,3 +2,4 @@ flask
 audio-metadata
 requests
 argparse
+colorama

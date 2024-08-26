@@ -25,21 +25,75 @@ class Habit(Model):
 
 api = Blueprint('api', __name__)
 
+def list_habits():
+    return db.read('habits', default=[])
+    
+def new_habit(name, time='00:00', frequency=1, duration=30):
+    habits = list_habits()
+    habit = Habit(name=name, time=time, frequency=frequency, duration=duration)
+    habits.append(habit.serialize())
+    db.save('habits', habits)
+    return habit
+
+def edit_habit(id, **kwargs):
+    habits = list_habits()
+    habit = next((h for h in habits if h.get('id') == id), None)
+    if habit:
+        habit_obj = Habit(**habit)
+        habit_obj.verify(**kwargs)
+        for key, value in kwargs.items():
+            habit_obj.__dict__.update({key: value})
+        habits = [h for h in habits if h.get('id') != id]
+        habits.append(habit_obj.serialize())
+        db.save('habits', habits)
+        return habit_obj
+    else:
+        raise Exception('Habit not found')
+
+def delete_habit(id):
+    habits = list_habits()
+    habit = next((h for h in habits if h.get('id') == id), None)
+    if habit:
+        habits = [h for h in habits if h.get('id') != id]
+        db.save('habits', habits)
+    else:
+        raise Exception('Habit not found')
+
+def complete_habit(id):
+    habits = list_habits()
+    habit = next((h for h in habits if h.get('id') == id), None)
+    if habit:
+        habit_obj = Habit(**habit)
+
+        day_offset = habit_obj.last_completed_day_offset()
+        if day_offset == 0:
+            raise Exception('Habit already completed today')
+        elif day_offset > 1:
+            habit_obj.streak = 1
+        else:
+            habit_obj.streak += 1
+
+        habit_obj.last_completed = time.time()
+
+        habits = [h for h in habits if h.get('id') != id]
+        habits.append(habit_obj.serialize())
+        db.save('habits', habits)
+
+        return habit_obj
+    else:
+        raise Exception('Habit not found')
+
 @api.route('/habits/list', methods=['GET'])
-def habits_list():
+def view_habits_list():
     try:
-        habits = db.read('habits', default=[])
-        return {'success': True, 'data': habits}
+        return {'success': True, 'data': list_habits()}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 500
 
 @api.route('/habits/new', methods=['POST'])
-def habits_new():
+def view_habits_new():
     try:
-        habit = Habit(**request.get_json())
-        habits = db.read('habits', default=[])
-        habits.append(habit.serialize())
-        db.save('habits', habits)
+        habit = new_habit(**request.get_json())
         return {'success': True, 'data': habit.serialize()}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
@@ -48,19 +102,8 @@ def habits_new():
 def habits_edit():
     try:
         habit_id = request.get_json().get('id')
-        habits = db.read('habits', default=[])
-        habit = next((h for h in habits if h.get('id') == habit_id), None)
-        if habit:
-            habit_obj = Habit(**habit)
-            habit_obj.verify(**request.get_json().get('data'))
-            for key, value in request.get_json().get('data').items():
-                habit_obj.__dict__.update({key: value})
-            habits = [h for h in habits if h.get('id') != habit_id]
-            habits.append(habit_obj.serialize())
-            db.save('habits', habits)
-            return {'success': True, 'data': habit_obj.serialize()}
-        else:
-            return {'success': False, 'error': 'Habit not found'}, 404
+        habit = edit_habit(habit_id, **request.get_json())
+        return {'success': True, 'data': habit.serialize()}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
     
@@ -68,14 +111,8 @@ def habits_edit():
 def habits_delete():
     try:
         habit_id = request.get_json().get('id')
-        habits = db.read('habits', default=[])
-        habit = next((h for h in habits if h.get('id') == habit_id), None)
-        if habit:
-            habits = [h for h in habits if h.get('id') != habit_id]
-            db.save('habits', habits)
-            return {'success': True}
-        else:
-            return {'success': False, 'error': 'Habit not found'}, 404
+        delete_habit(habit_id)
+        return {'success': True}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
 
@@ -83,28 +120,8 @@ def habits_delete():
 def habits_complete():
     try:
         habit_id = request.get_json().get('id')
-        habits = db.read('habits', default=[])
-        habit = next((h for h in habits if h.get('id') == habit_id), None)
-        if habit:
-            habit_obj = Habit(**habit)
-
-            day_offset = habit_obj.last_completed_day_offset()
-            if day_offset == 0:
-                return {'success': False, 'error': 'Habit already completed today'}, 400
-            elif day_offset > 1:
-                habit_obj.streak = 1
-            else:
-                habit_obj.streak += 1
-
-            habit_obj.last_completed = time.time()
-
-            habits = [h for h in habits if h.get('id') != habit_id]
-            habits.append(habit_obj.serialize())
-            db.save('habits', habits)
-
-            return {'success': True, 'data': habit_obj.serialize()}
-        else:
-            return {'success': False, 'error': 'Habit not found'}, 404
+        habit = complete_habit(habit_id)
+        return {'success': True, 'data': habit.serialize()}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
 
