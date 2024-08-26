@@ -7,7 +7,7 @@
 ## complete <id>
 
 import argparse, colorama
-from modules import api
+from modules import api, db
 
 def parse_time_str(time_str):
     # Convert 14:30 or 14:30:59 to seconds since midnight
@@ -74,6 +74,7 @@ parser_new.add_argument('frequency', type=int, default=1, help='Frequency in day
 parser_new.add_argument('duration', type=int, default=30, help='Duration in minutes')
 
 parser_list = subparsers.add_parser('list', help='List all habits')
+parser_overview = subparsers.add_parser('overview', help='Show an overview of all habits')
 
 parser_edit = subparsers.add_parser('edit', help='Edit an existing habit')
 parser_edit.add_argument('id', type=str, help='ID of the habit to edit')
@@ -115,6 +116,12 @@ if __name__ == '__main__':
         habits = api.list_habits()
         for habit in habits:
             print(f'{colorama.Fore.GREEN}{habit.get("id")}{colorama.Style.RESET_ALL}: "{habit.get("name")}" at {parse_time_seconds(habit.get("time"))} every {human_readable_duration_days(habit.get("frequency"))} that lasts {habit.get("duration")} minutes')
+    elif args.command == 'overview':
+        log = db.read('log', default={})
+        # In total, you've completed <green>n</green> habits today and missed <red>n</red> habits today.
+
+        print(f'In total, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed", 0)}{colorama.Style.RESET_ALL}.\n')
+        print(f'Today, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed_today", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed_today", 0)}{colorama.Style.RESET_ALL}.')
     elif args.command == 'edit':
         try:
             habit = api.edit_habit(args.id, name=args.name, time=args.time, frequency=args.frequency, duration=args.duration)

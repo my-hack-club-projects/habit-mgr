@@ -94,3 +94,6 @@ class NumberField(Field):
     def verify_value(self, value):
         return isinstance(value, (int, float))
         
+class BooleanField(Field):
+    def verify_value(self, value):
+        return isinstance(value, bool)

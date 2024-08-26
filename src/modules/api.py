@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from . import db
-from .db import Model, StringField, NumberField
-import time, threading
+from .db import Model, StringField, NumberField, BooleanField
+import time
 
 # DAY_DURATION = 60 * 60 * 24
 DAY_DURATION = 5
@@ -17,6 +17,7 @@ class Habit(Model):
             'time': NumberField(default=0), # Seconds since midnight
             'last_completed': NumberField(default=0),
             'last_reminded': NumberField(default=0),
+            'missed': BooleanField(default=False),
             'streak': NumberField(default=0),
         }
 
@@ -79,6 +80,12 @@ def complete_habit(id):
         habits.append(habit_obj.serialize())
         db.save('habits', habits)
 
+        # logging
+        log = db.read('log', default={})
+        log["habits_completed"] = log.get("habits_completed", 0) + 1
+        log["habits_completed_today"] = log.get("habits_completed_today", 0) + 1
+        db.save('log', log)
+
         return habit_obj
     else:
         raise Exception('Habit not found')
@@ -129,6 +136,13 @@ def reminder():
     from . import ntfy
 
     while True:
+        # is it the start of a new day?
+        if time.time() % DAY_DURATION < REMINDER_UPDATE_INTERVAL:
+            log = db.read('log', default={})
+            log["habits_completed_today"] = 0
+            log["habits_missed_today"] = 0
+            db.save('log', log)
+
         habits = db.read('habits', default=[])
         for habit in habits:
             habit_obj = Habit(**habit)
@@ -137,13 +151,17 @@ def reminder():
             # and the current time must be within the time range
             if time.time() - habit_obj.last_reminded >= habit_obj.frequency * DAY_DURATION and habit_obj.time <= time.time() % (DAY_DURATION * habit_obj.frequency) < habit_obj.time + REMINDER_UPDATE_INTERVAL:
                 habit_obj.last_reminded = time.time()
-                habits = [h for h in habits if h.get('id') != habit_obj.id]
-                habits.append(habit_obj.serialize())
-                db.save('habits', habits)
-
+                habit_obj.missed = False
                 ntfy.send_notification(f"Hey! It's time to {habit_obj.name}!")
+            # otherwise, did the habit pass the time range and was not completed? (habit.duration)
+            elif (time.time() - habit_obj.last_reminded >= habit_obj.duration * 60) and (habit_obj.last_completed < habit_obj.last_reminded) and (not habit_obj.missed):
+                habit_obj.missed = True
+                log = db.read('log', default={})
+                log["habits_missed"] = log.get("habits_missed", 0) + 1
+                log["habits_missed_today"] = log.get("habits_missed_today", 0) + 1
+                db.save('log', log)
+            habits = [h for h in habits if h.get('id') != habit_obj.id]
+            habits.append(habit_obj.serialize())
+            db.save('habits', habits)
 
         time.sleep(REMINDER_UPDATE_INTERVAL)
-
-def start_reminder():
-    threading.Thread(target=reminder).start()
