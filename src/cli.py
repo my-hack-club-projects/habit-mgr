@@ -127,7 +127,10 @@ if __name__ == '__main__':
 
         print(f'In total, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed", 0)}{colorama.Style.RESET_ALL}.\n')
         print(f'Here are your streaks:\n')
-        for habit in api.list_habits():
+        habits = api.list_habits()
+        if len(habits) == 0:
+            print(f'{colorama.Fore.LIGHTBLACK_EX}... nothing yet!{colorama.Style.RESET_ALL}')
+        for habit in habits:
             print(f'{habit.get("name")}: {colorama.Fore.GREEN}{human_readable_duration_days(habit.get("streak"), singular_remove_count=False)}{colorama.Style.RESET_ALL}')
         print()
         print(f'Today, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed_today", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed_today", 0)}{colorama.Style.RESET_ALL}.')
