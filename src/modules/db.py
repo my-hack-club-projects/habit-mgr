@@ -1,7 +1,6 @@
 from flask import Blueprint, request
+from settings import DB_DIRECTORY
 import os, json, uuid
-
-DB_DIRECTORY = 'db'
 
 db = Blueprint('db', __name__)
 

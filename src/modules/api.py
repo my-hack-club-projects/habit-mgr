@@ -1,11 +1,8 @@
 from flask import Blueprint, request
 from . import db
 from .db import Model, StringField, NumberField, BooleanField
+from settings import DAY_DURATION, REMINDER_UPDATE_INTERVAL
 import time
-
-# DAY_DURATION = 60 * 60 * 24
-DAY_DURATION = 5
-REMINDER_UPDATE_INTERVAL = 1
 
 class Habit(Model):
     class Meta:

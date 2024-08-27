@@ -8,7 +8,7 @@ app.register_blueprint(api_blueprint, url_prefix='/api')
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html') # Maybe a single page app in the future?
 
 if __name__ == '__main__':
     threading.Thread(target=app.run).start()
