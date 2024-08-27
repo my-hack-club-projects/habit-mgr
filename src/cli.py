@@ -40,7 +40,10 @@ def parse_time_seconds(time):
     else:
         return f'{hours}:{minutes:02}:{seconds:02}'
 
-def human_readable_duration_days(remaining_days):
+def human_readable_duration_days(remaining_days, singular_remove_count=True):
+    if remaining_days == 0:
+        return "none"
+
     units = {
         'day': 1,
         'week': 7,
@@ -61,7 +64,10 @@ def human_readable_duration_days(remaining_days):
     if len(parts) > 1:
         return ', '.join(parts[:-1]) + ' and ' + parts[-1]
     else:
-        return parts[0].strip("1 ") # If it's the only unit and it's singular, remove the count
+        if singular_remove_count:
+            return parts[0].strip("1 ") # If it's the only unit and it's singular, remove the count
+        else:
+            return parts[0]
 
 parser = argparse.ArgumentParser(description='Habit Tracker CLI')
 
@@ -118,9 +124,12 @@ if __name__ == '__main__':
             print(f'{colorama.Fore.GREEN}{habit.get("id")}{colorama.Style.RESET_ALL}: "{habit.get("name")}" at {parse_time_seconds(habit.get("time"))} every {human_readable_duration_days(habit.get("frequency"))} that lasts {habit.get("duration")} minutes')
     elif args.command == 'overview':
         log = db.read('log', default={})
-        # In total, you've completed <green>n</green> habits today and missed <red>n</red> habits today.
 
         print(f'In total, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed", 0)}{colorama.Style.RESET_ALL}.\n')
+        print(f'Here are your streaks:\n')
+        for habit in api.list_habits():
+            print(f'{habit.get("name")}: {colorama.Fore.GREEN}{human_readable_duration_days(habit.get("streak"), singular_remove_count=False)}{colorama.Style.RESET_ALL}')
+        print()
         print(f'Today, you\'ve completed {colorama.Fore.GREEN}{log.get("habits_completed_today", 0)}{colorama.Style.RESET_ALL} habits and missed {colorama.Fore.RED}{log.get("habits_missed_today", 0)}{colorama.Style.RESET_ALL}.')
     elif args.command == 'edit':
         try:
